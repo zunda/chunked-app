@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"net/http/httputil"
 	"os"
@@ -48,11 +47,10 @@ func main() {
 		port = "3000"
 	}
 
-	var httpServer http.Server
 	http.HandleFunc("/", handler)
 	http.HandleFunc("/chunked", handlerChunkedResponse)
 	http.HandleFunc("/chunked/noflush", handlerChunkedResponseNoFlush)
-	log.Println("start http listening :" + port)
-	httpServer.Addr = ":" + port
-	log.Println(httpServer.ListenAndServe())
+
+	addr := ":" + port
+	http.ListenAndServe(addr, nil)
 }
