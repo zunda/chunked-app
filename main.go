@@ -3,13 +3,27 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 )
+
+func chunkingHandler(w http.ResponseWriter, r *http.Request, d time.Duration) {
+	flusher, _ := w.(http.Flusher)
+
+	file, _ := os.Open("main.go")
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		fmt.Fprintln(w, scanner.Text())
+		flusher.Flush()
+		time.Sleep(d)
+	}
+}
 
 func main() {
 	port := os.Getenv("PORT")
@@ -25,6 +39,9 @@ func main() {
 <ul>
 <li><a href="/buf">Buffered server</a>
 <li><a href="/chunked">Streaming server</a>
+	<ul>
+	<li><a href="/slow">slowly</a>
+	</ul>
 <li><a href="/mix">Streaming server with content-length</a>
 </ul>
 </body></html>
@@ -44,17 +61,12 @@ func main() {
 
 	h.HandleFunc("/chunked", func(w http.ResponseWriter, r *http.Request) {
 		log.Println("Responding with chunked payload")
+		chunkingHandler(w, r, 0 * time.Millisecond)
+	})
 
-		flusher, _ := w.(http.Flusher)
-
-		file, _ := os.Open("main.go")
-		defer file.Close()
-
-		scanner := bufio.NewScanner(file)
-		for scanner.Scan() {
-			fmt.Fprintln(w, scanner.Text())
-			flusher.Flush()
-		}
+	h.HandleFunc("/slow", func(w http.ResponseWriter, r *http.Request) {
+		log.Println("Responding with chunked payload, slowly")
+		chunkingHandler(w, r, 100 * time.Millisecond)
 	})
 
 	// TODO: Serve this with both Transfer-Encoding: chunked and Content-Length
@@ -62,11 +74,12 @@ func main() {
 		log.Println("Responding through IO stream with content-length")
 
 		file, _ := os.Open("main.go")
-		defer file.Close()
-
 		stat, _ := file.Stat()
 		w.Header().Set("Content-Length", strconv.FormatInt(stat.Size(), 10))
-		io.Copy(w, file)
+		file.Close()
+		w.Header().Set("Transfer-Encoding", "chunked")	// This erases Content-Length
+
+		chunkingHandler(w, r, 0 * time.Millisecond)
 	})
 
 	log.Println("Listening at port " + port)
