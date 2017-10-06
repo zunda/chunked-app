@@ -35,6 +35,7 @@ func main() {
 
 	h.HandleFunc("/stream", func(w http.ResponseWriter, r *http.Request) {
 		file, _ := os.Open("main.go")
+		defer file.Close()
 		io.Copy(w, file)
 	})
 
