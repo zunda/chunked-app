@@ -9,7 +9,7 @@ import (
 
 type helloHandler struct {}
 
-func (h helloHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (helloHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "hello, you've hit %s\n", r.URL.Path)
 }
 
