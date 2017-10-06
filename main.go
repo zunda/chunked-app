@@ -11,7 +11,12 @@ import (
 	"time"
 )
 
-func chunkingHandler(w http.ResponseWriter, r *http.Request, d time.Duration) {
+type throttlingHandler struct {
+	d time.Duration
+}
+
+func (th throttlingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	log.Printf("Responding cunked lines with delays: %d\n", th.d)
 	flusher, _ := w.(http.Flusher)
 
 	file, _ := os.Open("main.go")
@@ -21,7 +26,7 @@ func chunkingHandler(w http.ResponseWriter, r *http.Request, d time.Duration) {
 	for scanner.Scan() {
 		fmt.Fprintln(w, scanner.Text())
 		flusher.Flush()
-		time.Sleep(d)
+		time.Sleep(th.d)
 	}
 }
 
@@ -49,9 +54,7 @@ func main() {
 		fmt.Fprint(w, toc)
 	})
 
-	h.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(404)
-	})
+	h.HandleFunc("/favicon.ico", http.NotFound)
 
 	h.HandleFunc("/buf", func(w http.ResponseWriter, r *http.Request) {
 		log.Println("Responding with buffered payload")
@@ -59,15 +62,9 @@ func main() {
 		fmt.Fprint(w, string(code))
 	})
 
-	h.HandleFunc("/chunked", func(w http.ResponseWriter, r *http.Request) {
-		log.Println("Responding with chunked payload")
-		chunkingHandler(w, r, 0 * time.Millisecond)
-	})
+	h.Handle("/chunked", throttlingHandler{0 * time.Millisecond})
 
-	h.HandleFunc("/slow", func(w http.ResponseWriter, r *http.Request) {
-		log.Println("Responding with chunked payload, slowly")
-		chunkingHandler(w, r, 100 * time.Millisecond)
-	})
+	h.Handle("/slow", throttlingHandler{100 * time.Millisecond})
 
 	// TODO: Serve this with both Transfer-Encoding: chunked and Content-Length
 	h.HandleFunc("/mix", func(w http.ResponseWriter, r *http.Request) {
@@ -79,7 +76,7 @@ func main() {
 		file.Close()
 		w.Header().Set("Transfer-Encoding", "chunked")	// This erases Content-Length
 
-		chunkingHandler(w, r, 0 * time.Millisecond)
+		throttlingHandler{0 * time.Millisecond}.ServeHTTP(w, r)
 	})
 
 	log.Println("Listening at port " + port)
