@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 )
 
 func main() {
@@ -22,6 +23,7 @@ func main() {
 <ul>
 <li><a href="/buf">Buffered server</a>
 <li><a href="/stream">Streaming server</a>
+<li><a href="/mix">Streaming server with content-length</a>
 </ul>
 </body></html>
 `
@@ -36,6 +38,16 @@ func main() {
 	h.HandleFunc("/stream", func(w http.ResponseWriter, r *http.Request) {
 		file, _ := os.Open("main.go")
 		defer file.Close()
+		io.Copy(w, file)
+	})
+
+	// TODO: Serve this with both Transfer-Encoding: chunked and Content-Length
+	h.HandleFunc("/mix", func(w http.ResponseWriter, r *http.Request) {
+		file, _ := os.Open("main.go")
+		defer file.Close()
+
+		stat, _ := file.Stat()
+		w.Header().Set("Content-Length", strconv.FormatInt(stat.Size(), 10))
 		io.Copy(w, file)
 	})
 
