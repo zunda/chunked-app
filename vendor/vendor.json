@@ -4,6 +4,6 @@
 	"package": [],
 	"rootPath": "chunked-app",
 	"heroku": {
-    "goVersion": "go1.9"
+    "goVersion": "go1.9.1"
     }
 }
