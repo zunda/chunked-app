@@ -32,6 +32,10 @@ func main() {
 		fmt.Fprint(w, toc)
 	})
 
+	h.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(404)
+	})
+
 	h.HandleFunc("/buf", func(w http.ResponseWriter, r *http.Request) {
 		log.Println("Responding with buffered payload")
 		code, _ := ioutil.ReadFile("main.go")
