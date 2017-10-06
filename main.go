@@ -15,7 +15,7 @@ type throttlingHandler struct {
 	d time.Duration
 }
 
-func (th throttlingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (th *throttlingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Responding cunked lines with delays: %d\n", th.d)
 	flusher, _ := w.(http.Flusher)
 
@@ -62,9 +62,9 @@ func main() {
 		fmt.Fprint(w, string(code))
 	})
 
-	h.Handle("/chunked", throttlingHandler{0 * time.Millisecond})
+	h.Handle("/chunked", &throttlingHandler{0 * time.Millisecond})
 
-	h.Handle("/slow", throttlingHandler{100 * time.Millisecond})
+	h.Handle("/slow", &throttlingHandler{100 * time.Millisecond})
 
 	// TODO: Serve this with both Transfer-Encoding: chunked and Content-Length
 	h.HandleFunc("/mix", func(w http.ResponseWriter, r *http.Request) {
@@ -76,7 +76,9 @@ func main() {
 		file.Close()
 		w.Header().Set("Transfer-Encoding", "chunked")	// This erases Content-Length
 
-		throttlingHandler{0 * time.Millisecond}.ServeHTTP(w, r)
+		log.Println("Calling throttlingHandler")
+		th := &throttlingHandler{0 * time.Millisecond}
+		th.ServeHTTP(w, r)
 	})
 
 	log.Println("Listening at port " + port)
