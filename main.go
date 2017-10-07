@@ -7,41 +7,28 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strconv"
 	"time"
 )
 
-type extraHeaderResponseWriter struct {
-	origWriter http.ResponseWriter
-}
 
-func (eh *extraHeaderResponseWriter) Flush() {
-	log.Println("Called Flush()")
-	eh.origWriter.(http.Flusher).Flush()
-}
-
-func (eh *extraHeaderResponseWriter) WriteHeader(rc int) {
-	log.Println("Called WriteHeader()")
-	eh.origWriter.WriteHeader(rc)
-}
-
-func (eh *extraHeaderResponseWriter) Write(b []byte) (int, error) {
-	log.Println("Called Write()")
-	return eh.origWriter.Write(b)
-}
-
-func (eh *extraHeaderResponseWriter) Header() http.Header {
-	log.Println("Called Header()")
-	return eh.origWriter.Header()
-}
-
-func extraHeaderHandler(h http.Handler) http.Handler {
-	fn := func(w http.ResponseWriter, r *http.Request) {
-		w = &extraHeaderResponseWriter{origWriter: w}
-		h.ServeHTTP(w, r)
+func extraHeaderHandleFunc(w http.ResponseWriter, r *http.Request) {
+	hj, ok := w.(http.Hijacker)
+	if !ok {
+		log.Fatal("Could not obtain Hijacker")
 	}
+	conn, bufrw, err := hj.Hijack()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
 
-	return http.HandlerFunc(fn)
+	message := "Hello World.\n"
+	bufrw.WriteString("HTTP/1.1 200 OK\r\n")
+	bufrw.WriteString("Content-Type: text/plain\r\n")
+	fmt.Fprintf(bufrw, "Content-Length: %d\r\n", len([]byte(message)))
+	bufrw.WriteString("\r\n")
+	bufrw.WriteString(message)
+	bufrw.Flush()
 }
 
 type throttlingHandler struct {
@@ -103,18 +90,7 @@ func main() {
 	h.Handle("/buf", &bufferedHandler{})
 	h.Handle("/chunked", &throttlingHandler{0 * time.Millisecond})
 	h.Handle("/slow", &throttlingHandler{100 * time.Millisecond})
-	h.HandleFunc("/mix", func(w http.ResponseWriter, r *http.Request) {
-		log.Println("Responding through IO stream with content-length")
-
-		file, _ := os.Open("main.go")
-		stat, _ := file.Stat()
-		w.Header().Set("Content-Length", strconv.FormatInt(stat.Size(), 10))
-		file.Close()
-		w.Header().Set("Transfer-Encoding", "chunked")
-
-		log.Println("Calling extraHeaderHandler")
-		extraHeaderHandler(&throttlingHandler{0}).ServeHTTP(w, r)
-	})
+	h.HandleFunc("/mix", extraHeaderHandleFunc)
 
 	log.Println("Listening at port " + port)
 	err := http.ListenAndServe(":"+port, h)
