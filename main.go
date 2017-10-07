@@ -10,8 +10,16 @@ import (
 	"time"
 )
 
+type extraHeaderHandler struct {
+	d time.Duration
+}
 
-func extraHeaderHandleFunc(w http.ResponseWriter, r *http.Request) {
+func (eh *extraHeaderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	file, _ := os.Open("main.go")
+	defer file.Close()
+	stat, _ := file.Stat()
+	size := stat.Size()
+
 	hj, ok := w.(http.Hijacker)
 	if !ok {
 		log.Fatal("Could not obtain Hijacker")
@@ -22,13 +30,17 @@ func extraHeaderHandleFunc(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	message := "Hello World.\n"
 	bufrw.WriteString("HTTP/1.1 200 OK\r\n")
-	bufrw.WriteString("Content-Type: text/plain\r\n")
-	fmt.Fprintf(bufrw, "Content-Length: %d\r\n", len([]byte(message)))
+	bufrw.WriteString("Transfer-Encoding: chunked\r\n")
+	fmt.Fprintf(bufrw, "Content-Length: %d\r\n", size)
 	bufrw.WriteString("\r\n")
-	bufrw.WriteString(message)
-	bufrw.Flush()
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		str := scanner.Text() + "\n"
+		fmt.Fprintf(bufrw, "%x\r\n%s\r\n", len([]byte(str)), str)
+		bufrw.Flush()
+		time.Sleep(eh.d)
+	}
 }
 
 type throttlingHandler struct {
@@ -90,7 +102,7 @@ func main() {
 	h.Handle("/buf", &bufferedHandler{})
 	h.Handle("/chunked", &throttlingHandler{0 * time.Millisecond})
 	h.Handle("/slow", &throttlingHandler{100 * time.Millisecond})
-	h.HandleFunc("/mix", extraHeaderHandleFunc)
+	h.Handle("/mix", &extraHeaderHandler{10 * time.Millisecond})
 
 	log.Println("Listening at port " + port)
 	err := http.ListenAndServe(":"+port, h)
