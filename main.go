@@ -41,6 +41,7 @@ func (eh *extraHeaderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		bufrw.Flush()
 		time.Sleep(eh.d)
 	}
+	bufrw.WriteString("0\r\n")
 }
 
 type throttlingHandler struct {
