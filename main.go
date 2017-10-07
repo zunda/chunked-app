@@ -15,6 +15,10 @@ type extraHeaderResponseWriter struct {
 	origWriter http.ResponseWriter
 }
 
+func (eh *extraHeaderResponseWriter) Flush() {
+	eh.origWriter.(http.Flusher).Flush()
+}
+
 func (eh *extraHeaderResponseWriter) WriteHeader(rc int) {
 	log.Println("Called WriteHeader()")
 	eh.origWriter.WriteHeader(rc)
@@ -109,7 +113,7 @@ func main() {
 		w.Header().Set("Transfer-Encoding", "chunked")
 
 		log.Println("Calling extraHeaderHandler")
-		extraHeaderHandler(&bufferedHandler{}).ServeHTTP(w, r)
+		extraHeaderHandler(&throttlingHandler{0}).ServeHTTP(w, r)
 	})
 
 	log.Println("Listening at port " + port)
