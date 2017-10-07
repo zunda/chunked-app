@@ -16,17 +16,17 @@ type extraHeaderResponseWriter struct {
 }
 
 func (eh *extraHeaderResponseWriter) WriteHeader(rc int) {
-	log.Println("Hey")
+	log.Println("Called WriteHeader()")
 	eh.origWriter.WriteHeader(rc)
 }
 
 func (eh *extraHeaderResponseWriter) Write(b []byte) (int, error) {
-	log.Println("Yo")
+	log.Println("Called Write()")
 	return eh.origWriter.Write(b)
 }
 
 func (eh *extraHeaderResponseWriter) Header() http.Header {
-	log.Println("Ya")
+	log.Println("Called Header()")
 	return eh.origWriter.Header()
 }
 
