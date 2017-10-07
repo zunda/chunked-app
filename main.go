@@ -35,7 +35,6 @@ func (eh *extraHeaderResponseWriter) Header() http.Header {
 	return eh.origWriter.Header()
 }
 
-
 func extraHeaderHandler(h http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		w = &extraHeaderResponseWriter{origWriter: w}
