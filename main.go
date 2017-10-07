@@ -16,6 +16,7 @@ type extraHeaderResponseWriter struct {
 }
 
 func (eh *extraHeaderResponseWriter) Flush() {
+	log.Println("Called Flush()")
 	eh.origWriter.(http.Flusher).Flush()
 }
 
