@@ -105,6 +105,7 @@ func main() {
 	h.Handle("/chunked", &throttlingHandler{0 * time.Millisecond})
 	h.Handle("/slow", &throttlingHandler{100 * time.Millisecond})
 	h.Handle("/mix", &extraHeaderHandler{10 * time.Millisecond})
+	h.Handle("/slowmix", &extraHeaderHandler{100 * time.Millisecond})
 
 	log.Println("Listening at port " + port)
 	err := http.ListenAndServe(":"+port, h)
