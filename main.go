@@ -94,6 +94,9 @@ func main() {
 	<li><a href="/slow">slowly</a>
 	</ul>
 <li><a href="/mix">Streaming server with content-length</a>
+	<ul>
+	<li><a href="/slowmix">slowly</a>
+	</ul>
 </ul>
 </body></html>
 `
