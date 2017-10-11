@@ -27,13 +27,14 @@ func (h17 *h17Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	bufrw.WriteString("HTTP/1.1 200\r\n")
+	bufrw.WriteString("HTTP/1.1 200 OK\r\n")
 	bufrw.WriteString("Transfer-Encoding: chunked\r\n")
 	bufrw.WriteString("\r\n")
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		str := scanner.Text() + "\n"
-		fmt.Fprintf(bufrw, "%x\r\n%s\r\n", len([]byte(str)), str)
+		fmt.Fprintf(bufrw, "x%x\r\n%s\r\n", len([]byte(str)), str)
+		// add an `x` at the head of each chunk
 		bufrw.Flush()
 	}
 	bufrw.WriteString("0\r\n\r\n")
@@ -127,7 +128,7 @@ func main() {
 	<ul>
 	<li><a href="/slowmix">slowly</a>
 	</ul>
-<li><a href="/h17">Respond with the status line without reason</a>
+<li><a href="/h17">Respond with chunked body with invalid headers</a>
 </ul>
 </body></html>
 `
