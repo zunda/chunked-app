@@ -14,6 +14,8 @@ type h17Handler struct {
 }
 
 func (h17 *h17Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	log.Println("Responding chunked invalid chunk length")
+
 	file, _ := os.Open("main.go")
 	defer file.Close()
 
@@ -46,6 +48,8 @@ type extraHeaderHandler struct {
 }
 
 func (eh *extraHeaderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	log.Println("Responding with both of chunked and content-length headers")
+
 	file, _ := os.Open("main.go")
 	defer file.Close()
 	stat, _ := file.Stat()
