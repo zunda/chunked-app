@@ -10,6 +10,41 @@ import (
 	"time"
 )
 
+type shortChunkHandler struct {
+}
+
+func (sc *shortChunkHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	log.Println("Responding chunks shorter than reported in chunk header")
+
+	file, _ := os.Open("main.go")
+	defer file.Close()
+
+	hj, ok := w.(http.Hijacker)
+	if !ok {
+		log.Fatal("Could not obtain Hijacker")
+	}
+	conn, bufrw, err := hj.Hijack()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+
+	bufrw.WriteString("HTTP/1.1 200 OK\r\n")
+	bufrw.WriteString("Transfer-Encoding: chunked\r\n")
+	bufrw.WriteString("\r\n")
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		str := scanner.Text() + "\n"
+		l := len([]byte(str)) + 2
+		// report payload size larger than actual
+		fmt.Fprintf(bufrw, "%x\r\n%s\r\n", l, str)
+		bufrw.Flush()
+	}
+	bufrw.WriteString("0\r\n\r\n")
+	bufrw.Flush()
+}
+
+
 type h17Handler struct {
 }
 
@@ -133,6 +168,7 @@ func main() {
 	<li><a href="/slowmix">slowly</a>
 	</ul>
 <li><a href="/h17">Respond with chunked body with invalid headers</a>
+<li><a href="/short">Respond with chunked body which is too short</a>
 </ul>
 </body></html>
 `
@@ -146,6 +182,7 @@ func main() {
 	h.Handle("/mix", &extraHeaderHandler{10 * time.Millisecond})
 	h.Handle("/slowmix", &extraHeaderHandler{100 * time.Millisecond})
 	h.Handle("/h17", &h17Handler{})
+	h.Handle("/short", &shortChunkHandler{})
 
 	log.Println("Listening at port " + port)
 	err := http.ListenAndServe(":"+port, h)
