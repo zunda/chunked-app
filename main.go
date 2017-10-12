@@ -49,7 +49,7 @@ type h17Handler struct {
 }
 
 func (*h17Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	log.Println("Responding chunked invalid chunk length")
+	log.Println("Responding chunks with invalid chunk length")
 
 	file, _ := os.Open("main.go")
 	defer file.Close()
