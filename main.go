@@ -13,7 +13,7 @@ import (
 type h17Handler struct {
 }
 
-func (h17 *h17Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (*h17Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Println("Responding chunked invalid chunk length")
 
 	file, _ := os.Open("main.go")
