@@ -10,6 +10,30 @@ import (
 	"time"
 )
 
+type notModifiedWithBodyChunkHandler struct {
+}
+
+func (sc *notModifiedWithBodyChunkHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	log.Println("Responding a 304 with zero length body")
+
+	hj, ok := w.(http.Hijacker)
+	if !ok {
+		log.Fatal("Could not obtain Hijacker")
+	}
+	conn, bufrw, err := hj.Hijack()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+
+	bufrw.WriteString("HTTP/1.1 304 NOT MODIFIED\r\n")
+	bufrw.WriteString("Connection: keep-alive\r\n")
+	bufrw.WriteString("Transfer-Encoding: chunked\r\n")
+	bufrw.WriteString("\r\n")
+	bufrw.WriteString("0\r\n\r\n")
+	bufrw.Flush()
+}
+
 type nullTermChunkHandler struct {
 }
 
@@ -201,6 +225,7 @@ func main() {
 <li><a href="/h17">Respond with chunked body with invalid headers</a>
 <li><a href="/short">Respond with chunked body which is too short</a>
 <li><a href="/null">Respond with chunks terminated with two \0s</a>
+<li><a href="/304withBody">Respond with 304 and zero length chunked body</a>
 </ul>
 </body></html>
 `
@@ -216,6 +241,7 @@ func main() {
 	h.Handle("/h17", &h17Handler{})
 	h.Handle("/short", &shortChunkHandler{})
 	h.Handle("/null", &nullTermChunkHandler{})
+	h.Handle("/304withBody", &notModifiedWithBodyChunkHandler{})
 
 	log.Println("Listening at port " + port)
 	err := http.ListenAndServe(":"+port, h)
