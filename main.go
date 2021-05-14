@@ -135,6 +135,7 @@ func (*h17Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 type extraHeaderHandler struct {
 	d time.Duration
+  withChunked bool
 }
 
 func (eh *extraHeaderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -156,13 +157,19 @@ func (eh *extraHeaderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	defer conn.Close()
 
 	bufrw.WriteString("HTTP/1.1 200 OK\r\n")
-	bufrw.WriteString("Transfer-Encoding: chunked\r\n")
+  if eh.withChunked {
+    bufrw.WriteString("Transfer-Encoding: chunked\r\n")
+  }
 	fmt.Fprintf(bufrw, "Content-Length: %d\r\n", size)
 	bufrw.WriteString("\r\n")
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		str := scanner.Text() + "\n"
-		fmt.Fprintf(bufrw, "%x\r\n%s\r\n", len([]byte(str)), str)
+    if eh.withChunked {
+      fmt.Fprintf(bufrw, "%x\r\n%s\r\n", len([]byte(str)), str)
+    } else {
+      fmt.Fprintf(bufrw, "%s", str)
+    }
 		bufrw.Flush()
 		time.Sleep(eh.d)
 	}
@@ -222,6 +229,7 @@ func main() {
 	<ul>
 	<li><a href="/slowmix">slowly</a>
 	</ul>
+<li><a href="/slownochunked">Slow server wihout chunked</a>
 <li><a href="/h17">Respond with chunked body with invalid headers</a>
 <li><a href="/short">Respond with chunked body which is too short</a>
 <li><a href="/null">Respond with chunks terminated with two \0s</a>
@@ -236,8 +244,9 @@ func main() {
 	h.Handle("/buf", &bufferedHandler{})
 	h.Handle("/chunked", &throttlingHandler{0 * time.Millisecond})
 	h.Handle("/slow", &throttlingHandler{100 * time.Millisecond})
-	h.Handle("/mix", &extraHeaderHandler{10 * time.Millisecond})
-	h.Handle("/slowmix", &extraHeaderHandler{100 * time.Millisecond})
+	h.Handle("/mix", &extraHeaderHandler{10 * time.Millisecond, true})
+	h.Handle("/slowmix", &extraHeaderHandler{100 * time.Millisecond, true})
+	h.Handle("/slownochunked", &extraHeaderHandler{100 * time.Millisecond, false})
 	h.Handle("/h17", &h17Handler{})
 	h.Handle("/short", &shortChunkHandler{})
 	h.Handle("/null", &nullTermChunkHandler{})
