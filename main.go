@@ -136,8 +136,8 @@ func (*h17Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 type extraHeaderHandler struct {
-	d time.Duration
-  withChunked bool
+	d           time.Duration
+	withChunked bool
 }
 
 func (eh *extraHeaderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -159,19 +159,19 @@ func (eh *extraHeaderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	defer conn.Close()
 
 	bufrw.WriteString("HTTP/1.1 200 OK\r\n")
-  if eh.withChunked {
-    bufrw.WriteString("Transfer-Encoding: chunked\r\n")
-  }
+	if eh.withChunked {
+		bufrw.WriteString("Transfer-Encoding: chunked\r\n")
+	}
 	fmt.Fprintf(bufrw, "Content-Length: %d\r\n", size)
 	bufrw.WriteString("\r\n")
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		str := scanner.Text() + "\n"
-    if eh.withChunked {
-      fmt.Fprintf(bufrw, "%x\r\n%s\r\n", len([]byte(str)), str)
-    } else {
-      fmt.Fprintf(bufrw, "%s", str)
-    }
+		if eh.withChunked {
+			fmt.Fprintf(bufrw, "%x\r\n%s\r\n", len([]byte(str)), str)
+		} else {
+			fmt.Fprintf(bufrw, "%s", str)
+		}
 		bufrw.Flush()
 		time.Sleep(eh.d)
 	}
