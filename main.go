@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -208,6 +210,38 @@ func (*bufferedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, string(code))
 }
 
+type randomResponder struct {
+}
+
+func (*randomResponder) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	count, err := strconv.Atoi(r.PathValue("count"))
+	if err != nil {
+		count = 100
+	}
+	log.Printf("Responding with %d random numbers\n", count)
+
+	hj, ok := w.(http.Hijacker)
+	if !ok {
+		log.Fatal("Could not obtain Hijacker")
+	}
+	conn, bufrw, err := hj.Hijack()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+
+	bufrw.WriteString("HTTP/1.1 200 OK\r\n")
+	bufrw.WriteString("Transfer-Encoding: chunked\r\n")
+	bufrw.WriteString("\r\n")
+	for i := 0; i < count; i++ {
+		str := fmt.Sprintf("%d\n", rand.Int())
+		fmt.Fprintf(bufrw, "%x\r\n%s\r\n", len([]byte(str)), str)
+		bufrw.Flush()
+	}
+	bufrw.WriteString("0\r\n\r\n")
+	bufrw.Flush()
+}
+
 func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -234,6 +268,7 @@ func main() {
 <li><a href="/short">Respond with chunked body which is too short</a>
 <li><a href="/null">Respond with chunks terminated with two \0s</a>
 <li><a href="/304withBody">Respond with 304 and zero length chunked body</a>
+<li><a href="/random/100">Respond with chunked 100 random numbers</a>
 </ul>
 </body></html>
 `
@@ -251,6 +286,7 @@ func main() {
 	h.Handle("/short", &shortChunkHandler{})
 	h.Handle("/null", &nullTermChunkHandler{})
 	h.Handle("/304withBody", &notModifiedWithBodyChunkHandler{})
+	h.Handle("/random/{count...}", &randomResponder{})
 
 	log.Println("Listening at port " + port)
 	err := http.ListenAndServe(":"+port, h)
